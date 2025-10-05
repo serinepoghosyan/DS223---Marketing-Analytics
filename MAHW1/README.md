@@ -6,13 +6,13 @@
 
 ---
 
-## 🧠 Project Overview
+## Project Overview
 This project applies the **Bass Diffusion Model** to forecast the global market adoption of the **Insta360 X4**, one of *TIME’s Best Inventions of 2024*.  
 The study uses the **GoPro MAX (2019)** as the historical analogue to estimate the diffusion parameters (p and q) and leverages **CIPA digital camera shipment data (1999–2024)** for fitting and validation. The model captures the rise, peak, and decline of the digital camera market and extends those dynamics to predict adoption for the new 360° action camera generation.
 
 ---
 
-## 📊 Methodology Summary
+## Methodology Summary
 
 | Step | Description |
 |------|--------------|
@@ -26,7 +26,7 @@ The study uses the **GoPro MAX (2019)** as the historical analogue to estimate t
 
 ---
 
-## ⚙️ Key Parameters and Insights
+## Key Parameters and Insights
 
 | Parameter | Symbol | Estimate |
 |------------|---------|-----------|
@@ -43,19 +43,19 @@ For the **Insta360 X4**, diffusion is expected to peak around **2035**, with app
 
 ---
 
-## 📈 Visualization Outputs
+## Visualization Outputs
 
-### 1️⃣ Observed vs. Bass Fitted (Digital Cameras)
+### Observed vs. Bass Fitted (Digital Cameras)
 ![Bass Fit – CIPA](cipa_bass_fit.jpeg)
 
-### 2️⃣ Cumulative Observed vs. Bass Implied
+### Cumulative Observed vs. Bass Implied
 ![Cumulative Bass Fit](cipa_bass_cumulative.jpeg)
 
 These figures demonstrate that the Bass model accurately replicates the lifecycle of digital camera shipments, validating parameter use for new-product forecasting.
 
 ---
 
-## 🧩 Repository Structure
+## Repository Structure
 ```
 MAHW1/
 │
@@ -79,7 +79,7 @@ MAHW1/
 
 ---
 
-## 🧮 How to Reproduce
+## How to Reproduce
 
 1. **Install R packages**
    ```r
@@ -100,7 +100,7 @@ This reproduces all figures, parameter estimates, and forecast tables.
 
 ---
 
-## 📚 References
+## References
 
 - **TIME (2024).** *Insta360 X4.*  
   [https://time.com/collection/best-inventions-2024/](https://time.com/collection/best-inventions-2024/)
@@ -111,6 +111,6 @@ This reproduces all figures, parameter estimates, and forecast tables.
 
 ---
 
-## 🏁 Summary
+## Summary
 This project models the diffusion of **Insta360 X4 (2024)** using historical digital camera shipment data and Bass model estimation.  
 By leveraging real-world data and validated diffusion parameters, it provides a realistic, quantitative forecast of the 360° camera market’s growth trajectory through 2035.

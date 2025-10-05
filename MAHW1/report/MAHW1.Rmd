@@ -1,0 +1,42 @@
+---
+title: "MAHW1"
+author: "Serine Poghosyan"
+output: pdf_document
+date: "2025-10-05"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Innovation Diffusion Analysis Based on TIME’s Best Innovations List
+## 1) Selected Innovation
+
+A compact 360° action camera designed for creators, athletes, and travelers. It captures immersive, all-direction video in a rugged, pocketable form factor, then lets you “reframe” shots after the fact in the mobile/desktop app. Core strengths include advanced stabilization, horizon leveling, and an accessory ecosystem (mounts, grips, batteries) that supports on-the-go filming. This makes the X4 a natural evolution of the action-camera category toward more flexible, creator-first workflows.
+
+## 2) Similar innovation from the past
+
+**Look-alike innovation: GoPro MAX (2019) **
+
+GoPro MAX and Insta360 X4 share the same core function: capture everything in 360°, then “reframe” later into standard video. Both use dual lenses, advanced stabilization, horizon leveling, and stitching software to turn spherical footage into smooth, creator-ready clips. The X4 advances this template with higher resolutions, better low-light, faster processing, and more polished mobile/desktop editing—but it’s fundamentally the next iteration of the 360 action-cam idea that MAX helped popularize.
+
+From a market standpoint, MAX broadened the action-camera audience beyond extreme sports by making immersive capture and flexible post-editing practical; X4 pushes that curve further with higher quality and a richer accessory/app ecosystem. This makes GoPro MAX (2019) a tight historical analog for estimating Bass parameters: we can anchor innovation (p) and imitation (q) on the early 360 action-cam wave and scale market potential (M) to today’s larger creator economy.
+
+## 3) Data 
+I compiled a yearly time series of global camera shipments from the Camera & Imaging Products Association (CIPA) “Production and Shipment of Digital Still Cameras” annual summaries (PDFs for 1999–2024). For each year, I located the “Digital Still Camera Total → Total Shipment (Worldwide)” and then converted units to million devices by dividing by 1,000,000 (e.g., 8,490,227 PCS → 8.490227 million) and saved the two-column dataset as year,sales. Thus creating consistent annual series suitable for Bass diffusion modeling. https://www.cipa.jp/e/stats/dc-2024.html (source that I used)
+
+## 4) Estimate Bass Model parameters
+
+We estimated the Bass model on global digital-camera shipments (1999–2024) and obtained M is almost equal to 1,214 million units, p is almost equal to 0.0050, and q is almost equal to 0.3855. The very low p and much larger q (q/p is almost equal to 77) indicate a diffusion process driven primarily by imitation/word-of-mouth rather than by external pushes like advertising—typical for consumer electronics once the category gains traction. The implied peak-time t* is almost equal to 11.1 periods (with t=1 at 1999) places the sales peak around 2010, which matches the data’s observed maximum. Overall, the fitted curve captures the classic rise-peak-decline pattern, with a reasonable market potential (M) only modestly above the historical cumulative shipments.
+
+## 5) Predict the diffusion of the innovation selected in step 1
+Using the Bass parameters transferred from the look-alike p_hat = 0.0050, q_hat = 0.3855 ), I forecast the diffusion of the chosen innovation with a global market potential M set to 20 million units (and ±20% sensitivity). The model implies a peak in annual adoption ~11.1 years after launch, i.e., around 2035 for a 2025 start. Under the base case, annual adopters rise from ~0.15M in 2025 to ~1.9M by 2034, while cumulative adopters reach ~7.7M (~38% of M) by 2034. Low/high scenarios simply scale the curve by ±20% in level, with the same timing, reflecting uncertainty in M.
+
+## 6) Choose a scope  
+I model diffusion at the worldwide level to keep the estimation and prediction scopes consistent. The Bass parameters (p_hat and q_hat) were estimated from global digital-camera shipments (CIPA, 1999–2024), so forecasting the chosen innovation on a global basis avoids mixing regional patterns and preserves the empirical diffusion shape. The product is distributed internationally and targets a global creator base, so a worldwide market potential M is appropriate. I report a base-case M and ±20% sensitivity to reflect uncertainty in total addressable demand.
+
+## 7) Estimate the number of adopters by period.
+Using the Bass parameters transferred from the look-alike p_hat = 0.0050, q_hat = 0.3855 
+and a global market potential M=20 million units (with ±20% sensitivity), I computed projected annual adopters a(t), a cummulative adopters A(t) from the 2025 launch year over a 10-year horizon. In the base case, annual adopters rise from about 0.15M in 2025 to ~1.89M by 2034, while cumulative adopters reach ~7.68M (=38% of M) by 2034. The model’s peak occurs about 11.1 years after launch (=2035), so the annual curve is still increasing through 2034. The low/high scenarios (±20% on M) produce proportionally lower/higher levels but the same timing, reflecting uncertainty in total addressable demand.
+
+

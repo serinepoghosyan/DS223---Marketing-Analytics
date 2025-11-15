@@ -1,0 +1,285 @@
+---
+title: "Homework 3 – Survival Analysis and CLV (R)"
+author: "Serine Poghosyan"
+date: "2025-11-15"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(survival)
+library(flexsurv)
+library(dplyr)
+library(ggplot2)
+
+```
+
+```{r}
+telco <- read.csv("/Users/serinepoghosyan/Desktop/MAhomework/telco.csv")
+str(telco)
+head(telco)
+```
+```{r}
+# Binary event: 1 = churned, 0 = still active
+
+telco$churn_event <- ifelse(telco$churn == "Yes", 1, 0)
+
+# Treat these as factors (categorical)
+
+telco <- telco %>%
+mutate(
+region  = factor(region),
+marital = factor(marital),
+ed      = factor(ed),
+retire  = factor(retire),
+gender  = factor(gender),
+voice   = factor(voice),
+internet= factor(internet),
+forward = factor(forward),
+custcat = factor(custcat)
+)
+
+# Survival object
+surv_obj <- Surv(time = telco$tenure, event = telco$churn_event)
+surv_obj[1:10]
+```
+```{r}
+aft_formula <- surv_obj ~ age + income + address +
+marital + ed + retire + gender +
+voice + internet + forward + custcat
+set.seed(123)
+
+fit_exp       <- flexsurvreg(aft_formula, data = telco, dist = "exp")
+fit_weibull   <- flexsurvreg(aft_formula, data = telco, dist = "weibull")
+fit_lognormal <- flexsurvreg(aft_formula, data = telco, dist = "lnorm")
+fit_loglogis  <- flexsurvreg(aft_formula, data = telco, dist = "llogis")
+```
+
+```{r}
+model_comp <- data.frame(
+model = c("exponential", "weibull", "lognormal", "loglogistic"),
+AIC = c(fit_exp$AIC, fit_weibull$AIC,
+fit_lognormal$AIC, fit_loglogis$AIC),
+BIC = c(
+AIC(fit_exp, k = log(nrow(telco))),
+AIC(fit_weibull, k = log(nrow(telco))),
+AIC(fit_lognormal, k = log(nrow(telco))),
+AIC(fit_loglogis, k = log(nrow(telco)))
+)
+)
+
+model_comp <- model_comp %>%
+arrange(AIC)
+
+model_comp
+```
+Model comparison results show that the lognormal distribution has the lowest AIC, making it the best-fitting AFT model for this dataset. Thus the lognormal AFT model is selected as the final survival model. 
+
+```{r}
+# Building a typical profile for prediction
+
+typical <- telco %>%
+summarise(
+age     = mean(age, na.rm = TRUE),
+income  = mean(income, na.rm = TRUE),
+address = mean(address, na.rm = TRUE),
+marital = names(sort(table(marital), decreasing = TRUE))[1],
+ed      = names(sort(table(ed),      decreasing = TRUE))[1],
+retire  = names(sort(table(retire),  decreasing = TRUE))[1],
+gender  = names(sort(table(gender),  decreasing = TRUE))[1],
+voice   = names(sort(table(voice),   decreasing = TRUE))[1],
+internet= names(sort(table(internet),decreasing = TRUE))[1],
+forward = names(sort(table(forward), decreasing = TRUE))[1],
+custcat = names(sort(table(custcat), decreasing = TRUE))[1]
+)
+
+typical
+
+times <- seq(1, max(telco$tenure), by = 1)
+
+# Get survival curves for each model at "typical"
+
+s_exp       <- summary(fit_exp,       newdata = typical, t = times, type = "survival")[[1]]
+s_weibull   <- summary(fit_weibull,   newdata = typical, t = times, type = "survival")[[1]]
+s_lognormal <- summary(fit_lognormal, newdata = typical, t = times, type = "survival")[[1]]
+s_loglogis  <- summary(fit_loglogis,  newdata = typical, t = times, type = "survival")[[1]]
+
+plot_df <- rbind(
+data.frame(time = s_exp$time,       surv = s_exp$est,       model = "exponential"),
+data.frame(time = s_weibull$time,   surv = s_weibull$est,   model = "weibull"),
+data.frame(time = s_lognormal$time, surv = s_lognormal$est, model = "lognormal"),
+data.frame(time = s_loglogis$time,  surv = s_loglogis$est,  model = "loglogistic")
+)
+
+ggplot(plot_df, aes(x = time, y = surv, color = model)) +
+geom_step() +
+labs(title = "Survival curves by distribution (typical customer)",
+x = "Tenure (months)",
+y = "Survival probability") +
+theme_minimal()
+```
+All models predict high survival initially.
+Over time, survival probability declines gradually.
+Lognormal and loglogistic curves behave similarly and sit near the middle of the distribution family.
+Exponential exhibits constant hazard and becomes the least flexible shape.
+This further supports selecting the lognormal distribution.
+
+```{r}
+# Final AFT model (lognormal, all covariates)
+final_fit <- flexsurvreg(
+  Surv(tenure, churn_event) ~ age + income + address +
+    marital + ed + retire + gender +
+    voice + internet + forward + custcat,
+  data = telco,
+  dist = "lognormal"
+)
+
+summary(final_fit)
+
+```
+Age, income, and address length have small but measurable effects on log-time to churn.
+Several categorical variables (education, customer category) show meaningful differences in expected survival.
+Gender has almost no effect on churn timing.
+```{r}
+# CLV parameters
+
+horizon <- 24      # months to look ahead 
+MM      <- 50      # assumed average monthly margin per subscriber
+r       <- 0.12    # annual discount rate (12%)
+
+times_clv <- 1:horizon
+discount_factors <- 1 / (1 + r/12)^(times_clv - 1)
+discount_factors
+
+```
+
+
+```{r}
+# CLV for each customer
+
+# Covariates used in the final model (same as in formula above)
+covars <- c("age", "income", "address",
+            "marital", "ed", "retire", "gender",
+            "voice", "internet", "forward", "custcat")
+
+telco_model <- telco[, covars, drop = FALSE]
+
+# helper: get survival probs for one customer across times_clv
+get_surv_for_customer <- function(i) {
+  newd <- telco_model[i, , drop = TRUE]
+  newd <- as.data.frame(as.list(newd))  
+  s_i  <- summary(final_fit, newdata = newd, t = times_clv, type = "survival")[[1]]
+  s_i$est   
+}
+
+# building survival matrix: rows = customers, cols = months
+surv_list <- lapply(1:nrow(telco_model), get_surv_for_customer)
+surv_mat  <- do.call(rbind, surv_list)  # n_customers x horizon
+
+dim(surv_mat)
+head(surv_mat[, 1:5])
+
+```
+```{r}
+# CLV = MM * sum_i ( p_i / (1 + r/12)^(i-1) )
+
+clv_values <- MM * rowSums(
+  surv_mat * matrix(discount_factors,
+                    nrow = nrow(surv_mat),
+                    ncol = length(discount_factors),
+                    byrow = TRUE)
+)
+
+telco$CLV <- clv_values
+
+summary(telco$CLV)
+
+```
+```{r}
+# CLV by segments
+# Examples: by customer category, marital, gender
+seg_vars <- c("custcat", "marital", "gender")
+
+for (v in seg_vars) {
+  cat("\n=== CLV by", v, "===\n")
+  print(
+    telco %>%
+      group_by(.data[[v]]) %>%
+      summarise(
+        n        = n(),
+        mean_CLV = mean(CLV, na.rm = TRUE),
+        med_CLV  = median(CLV, na.rm = TRUE)
+      ) %>%
+      arrange(desc(mean_CLV))
+  )
+}
+ggplot(telco, aes(x = custcat, y = CLV)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "CLV by Customer Category",
+       x = "Customer Category",
+       y = "CLV") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+## 1. CLV by Customer Category (custcat)
+Plus Service customers have the highest CLV — they stay the longest under the lognormal survival model and provide the most value.
+E-service is second best — still strong retention and above-average CLV.
+Total service and Basic service have much lower CLV.
+Basic service customers are the lowest-value segment and churn earlier.
+
+Retention focus should be on Basic service and Total service customers, because they generate the least lifetime revenue.
+Upselling customers into Plus or E-service packages increases CLV substantially.
+
+## 2. CLV by Marital Status
+Married customers have noticeably higher CLV.
+They stay longer and churn less frequently.
+Unmarried customers have lower retention and lower CLV.
+
+Married customers are naturally more profitable.
+Retention should focus on unmarried individuals, who are at higher churn risk.
+
+## 3. CLV by Gender
+Gender differences in CLV are minimal.
+This variable is not strongly related to churn behavior.
+
+Gender should not be used as a primary basis for retention strategy, since the difference in CLV is negligible.
+
+```{r}
+# Identify high-risk subscribers
+
+
+# Predicting survival at 12 months for each customer
+pred12 <- summary(
+  fit_lognormal,
+  t = 12,
+  type = "survival"
+)
+
+# Extracting the survival estimates
+telco$S_12 <- sapply(pred12, function(x) x$est)
+
+# Adding churn risk = 1 - survival
+telco$risk_12 <- 1 - telco$S_12
+
+# Ordering customers by highest predicted churn risk
+at_risk <- telco %>%
+  arrange(desc(risk_12)) %>%
+  select(ID, tenure, custcat, marital, gender, risk_12, CLV)
+
+head(at_risk, 10)
+
+```
+## At-Risk Customer Identification
+Using the best-fitting lognormal AFT model, I predicted each customer's survival probability at t = 12 months and computed churn risk as:
+risk12 = 1-S(12) 
+When ranking customers from the highest to lowest predicted churn risk, the top 10 customers all exhibit a very similar churn probability of approximately 5.56%. This occurs because the lognormal model produces a high survival probability at 12 months for nearly all covariate profiles (S(12) ≈ 0.944).
+Thus, the model indicates that short-term churn risk at the 12-month horizon is uniformly low across customers. Differences between customers emerge more clearly at longer time horizons, where survival curves begin to diverge more substantially.
+
+# Report 
+My lognormal AFT survival model shows that churn risk is influenced most strongly by customer category, marital status, and certain demographic factors. Higher-value plans (Plus Service and E-service) significantly increase survival time, while Basic and Total service customers churn earlier. Married customers exhibit longer expected tenure, whereas unmarried customers face notably higher churn risk. Income and age have small but consistent positive effects on retention, while gender shows no meaningful impact. Interpreting the coefficients overall, features associated with higher socioeconomic stability or more comprehensive service subscriptions lead to longer survival times.
+
+Customer value was defined using Customer Lifetime Value (CLV), combining predicted survival probabilities with discounted monthly margin. Under this definition, Plus Service subscribers are the most valuable segment, followed by E-service; these customers remain active longer and generate the highest CLV. Basic service customers are the least valuable and should be the primary focus of retention efforts. Given that the model predicts a 12-month churn risk of approximately 5.56%, around 56 customers per 1,000 can be considered at-risk within a year. With an average CLV of about $960, a reasonable annual retention budget would be approximately 5–10% of expected loss, or roughly $3,000–$5,000 yearly to recover part of that at-risk value. Beyond targeted outreach, I recommend upsell programs, plan migration incentives, and personalized communication to move low-value customers into higher-value categories while stabilizing retention among the highest-risk groups.
